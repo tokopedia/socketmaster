@@ -30,9 +30,12 @@ func handleSignals(processGroup *ProcessGroup, c <-chan os.Signal, startTime int
 					time.Sleep(time.Duration(startTime) * time.Millisecond)
 				}
 
-				// A possible improvement woud be to only swap the
-				// process if the new child is still alive.
-				processGroup.SignalAll(syscall.SIGTERM, process)
+				if len(processGroup.set.set) > 1 {
+					processGroup.SignalAll(syscall.SIGTERM, process)
+				} else {
+					processGroup.SignalAll(syscall.SIGCHLD, nil)
+					log.Println("Failed to kill old process, because there's no one left in the group")
+				}
 			}
 		default:
 			// Forward signal
