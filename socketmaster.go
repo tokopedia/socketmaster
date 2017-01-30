@@ -44,6 +44,11 @@ func handleSignals(processGroup *ProcessGroup, c <-chan os.Signal, startTime int
 	}
 }
 
+var (
+	version     string
+	versionFlag bool
+)
+
 func main() {
 	var (
 		addr      string
@@ -59,7 +64,13 @@ func main() {
 	flag.IntVar(&startTime, "start", 3000, "How long the new process takes to boot in millis")
 	flag.BoolVar(&useSyslog, "syslog", false, "Log to syslog")
 	flag.StringVar(&username, "user", "", "run the command as this user")
+	flag.BoolVar(&versionFlag, "v", false, "binary version")
 	flag.Parse()
+
+	if versionFlag == true {
+		fmt.Println(version)
+		os.Exit(0)
+	}
 
 	if useSyslog {
 		stream, err := syslog.New(syslog.LOG_INFO, PROGRAM_NAME)
