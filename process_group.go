@@ -109,6 +109,13 @@ func newProcessSet() *processSet {
 	return set
 }
 
+func (self *processSet) Len() int {
+	self.Lock()
+	defer self.Unlock()
+
+	return len(self.set)
+}
+
 func (self *processSet) Add(process *os.Process) {
 	self.Lock()
 	defer self.Unlock()

@@ -30,10 +30,10 @@ func handleSignals(processGroup *ProcessGroup, c <-chan os.Signal, startTime int
 					time.Sleep(time.Duration(startTime) * time.Millisecond)
 				}
 
-				if len(processGroup.set.set) > 1 {
+				if processGroup.set.Len() > 1 {
 					processGroup.SignalAll(syscall.SIGTERM, process)
 				} else {
-					processGroup.SignalAll(syscall.SIGCHLD, nil)
+					processGroup.SignalAll(syscall.SIGUSR1, nil)
 					log.Println("Failed to kill old process, because there's no one left in the group")
 				}
 			}
