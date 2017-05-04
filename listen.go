@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"syscall"
 )
 
 // Utility to open a tcp[46]? or fd
@@ -56,6 +57,9 @@ func ListenFile(rawurl string) (file *os.File, err error) {
 		// Closing the listener doesn't affect the file and reversely.
 		// http://golang.org/pkg/net/#TCPListener.File
 		file, err = listener.File()
+
+		syscall.SetsockoptInt(int(file.Fd()), syscall.SOL_SOCKET, syscall.SO_REUSEPORT, 1)
+
 	default:
 		err = fmt.Errorf("Unsupported scheme: %s", u.Scheme)
 	}
