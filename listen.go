@@ -58,7 +58,7 @@ func ListenFile(rawurl string) (file *os.File, err error) {
 		// http://golang.org/pkg/net/#TCPListener.File
 		file, err = listener.File()
 
-		syscall.SetsockoptInt(int(file.Fd()), syscall.SOL_SOCKET, syscall.SO_REUSEPORT, 1)
+		syscall.SetsockoptInt(int(file.Fd()), syscall.SOL_SOCKET, 0x0F, 1)
 
 	default:
 		err = fmt.Errorf("Unsupported scheme: %s", u.Scheme)
