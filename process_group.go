@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"flag"
+	"fmt"
 	"log"
 	"os"
 	"os/user"
@@ -18,6 +19,10 @@ type ProcessGroup struct {
 	commandPath string
 	sockfile    *os.File
 	user        *user.User
+
+	// if true, socketmaster will wait SIGUSR1 from the new child
+	// before killing the old one
+	waitChildNotif bool
 }
 
 type processSet struct {
@@ -25,12 +30,13 @@ type processSet struct {
 	set map[*os.Process]bool
 }
 
-func MakeProcessGroup(commandPath string, sockfile *os.File, u *user.User) *ProcessGroup {
+func MakeProcessGroup(commandPath string, sockfile *os.File, u *user.User, waitChildNotif bool) *ProcessGroup {
 	return &ProcessGroup{
-		set:         newProcessSet(),
-		commandPath: commandPath,
-		sockfile:    sockfile,
-		user:        u,
+		set:            newProcessSet(),
+		commandPath:    commandPath,
+		sockfile:       sockfile,
+		user:           u,
+		waitChildNotif: waitChildNotif,
 	}
 }
 
@@ -61,6 +67,11 @@ func (self *ProcessGroup) StartProcess() (process *os.Process, err error) {
 	}
 
 	args := append([]string{self.commandPath}, flag.Args()...)
+	if self.waitChildNotif {
+		args = append(args, "-socketmaster-pid")
+		args = append(args, fmt.Sprintf("%d", os.Getpid()))
+	}
+
 	log.Println("Starting", self.commandPath, args)
 	process, err = os.StartProcess(self.commandPath, args, procAttr)
 	if err != nil {
