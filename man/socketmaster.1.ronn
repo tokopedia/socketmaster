@@ -83,26 +83,18 @@ to send `SIGUSR1` before killing the old one.
 
 Note that `-wait-child-notif` still respect `-start` argument.
 
-In order to use this feature, the app server need to do these:
-- add support for `socketmaster-pid` command line argument
-  `socketmaster` will start the app server with `socketmaster-id {PID_OF_SOCKETMASTER}`
-  argument
-- Send `SIGUSR1` signal after the appserver is ready
+In order to use this feature, the app server need to do this:
+- read `SOCKETMASTER_PID` environment variable to get `socketmaster` process ID
+- Send `SIGUSR1` signal after the appserver is ready to the `socketmaster`
 
 *Example in Go*
-
-add support for `socketmaster-pid` command line argument
-```go
-flag.IntVar(&socketmasterPID, "socketmaster-pid", 0, "pid of the socketmaster")
-flag.Parse()
-```
 
 Send `SIGUSR1` signal after the appserver is ready
 ```go
 import (
   "github.com/tokopedia/socketmaster/child"
 )
-go child.NotifyMaster(socketmasterPID)
+go child.NotifyMaster()
 ```
 
 ## RELATED PROJECTS

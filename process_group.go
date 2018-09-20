@@ -49,6 +49,9 @@ func (self *ProcessGroup) StartProcess() (process *os.Process, err error) {
 	}
 
 	env := append(os.Environ(), "EINHORN_FDS=3")
+	if self.waitChildNotif {
+		env = append(env, fmt.Sprintf("SOCKETMASTER_PID=%d", os.Getpid()))
+	}
 
 	procAttr := &os.ProcAttr{
 		Env:   env,
@@ -67,10 +70,6 @@ func (self *ProcessGroup) StartProcess() (process *os.Process, err error) {
 	}
 
 	args := append([]string{self.commandPath}, flag.Args()...)
-	if self.waitChildNotif {
-		args = append(args, "-socketmaster-pid")
-		args = append(args, fmt.Sprintf("%d", os.Getpid()))
-	}
 
 	log.Println("Starting", self.commandPath, args)
 	process, err = os.StartProcess(self.commandPath, args, procAttr)
