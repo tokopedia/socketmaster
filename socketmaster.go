@@ -16,32 +16,52 @@ import (
 const PROGRAM_NAME = "socketmaster"
 
 func handleSignals(processGroup *ProcessGroup, c <-chan os.Signal, startTime int) {
+	var process *os.Process
 	for {
+		var err error
 		signal := <-c // os.Signal
 		syscallSignal := signal.(syscall.Signal)
 
 		switch syscallSignal {
 		case syscall.SIGHUP:
-			process, err := processGroup.StartProcess()
+			process, err = processGroup.StartProcess()
 			if err != nil {
 				log.Printf("Could not start new process: %v\n", err)
-			} else {
-				if startTime > 0 {
-					time.Sleep(time.Duration(startTime) * time.Millisecond)
-				}
-
-				if processGroup.set.Len() > 1 {
-					processGroup.SignalAll(syscall.SIGTERM, process)
-				} else {
-					processGroup.SignalAll(syscall.SIGUSR1, nil)
-					log.Println("Failed to kill old process, because there's no one left in the group")
-				}
+				continue
 			}
+
+			if processGroup.waitChildNotif {
+				continue // we will kill old process after receive signal from the new one.
+			}
+
+			killOldProcesses(processGroup, startTime, process)
+			process = nil
+
+		case syscall.SIGUSR1: // new child send SIGNAL about it's readyness to master
+			if !processGroup.waitChildNotif {
+				log.Println("master received SIGUSR1 while not in wait-child-notif mode")
+				continue
+			}
+
+			killOldProcesses(processGroup, startTime, process)
+			process = nil
 		default:
 			// Forward signal
 			processGroup.SignalAll(signal, nil)
 		}
 	}
+}
+
+func killOldProcesses(processGroup *ProcessGroup, startTime int, process *os.Process) {
+	if startTime > 0 {
+		time.Sleep(time.Duration(startTime) * time.Millisecond)
+	}
+	if processGroup.set.Len() > 1 {
+		processGroup.SignalAll(syscall.SIGTERM, process)
+	} else {
+		log.Println("Failed to kill old process, because there's no one left in the group")
+	}
+
 }
 
 func main() {
@@ -52,6 +72,10 @@ func main() {
 		startTime int
 		useSyslog bool
 		username  string
+
+		// if true, socketmaster will wait SIGUSR1 from the new child
+		// before killing the old one
+		waitChildNotif bool
 	)
 
 	flag.StringVar(&command, "command", "", "Program to start")
@@ -59,6 +83,7 @@ func main() {
 	flag.IntVar(&startTime, "start", 3000, "How long the new process takes to boot in millis")
 	flag.BoolVar(&useSyslog, "syslog", false, "Log to syslog")
 	flag.StringVar(&username, "user", "", "run the command as this user")
+	flag.BoolVar(&waitChildNotif, "wait-child-notif", false, "wait for new child")
 	flag.Parse()
 
 	if useSyslog {
@@ -99,7 +124,7 @@ func main() {
 	}
 
 	// Run the first process
-	processGroup := MakeProcessGroup(commandPath, sockfile, targetUser)
+	processGroup := MakeProcessGroup(commandPath, sockfile, targetUser, waitChildNotif)
 	_, err = processGroup.StartProcess()
 	if err != nil {
 		log.Fatalln("Could not start process", err)
@@ -107,7 +132,7 @@ func main() {
 
 	// Monitoring the processes
 	c := make(chan os.Signal)
-	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGHUP)
+	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGHUP, syscall.SIGUSR1)
 	go handleSignals(processGroup, c, startTime)
 
 	// TODO: Full restart on USR2. Make sure the listener file is not set to SO_CLOEXEC

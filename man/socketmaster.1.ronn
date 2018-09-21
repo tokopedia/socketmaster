@@ -37,6 +37,11 @@ and can keep your file-descriptor indefinitely open.
     Sets the child process's uid/gid to the given user (looked up in /etc/passwd).
     This command only works when socketmaster is run as root.
 
+  * `wait-child-notif`=boolean (default: false):
+    If true, `socketmaster` will wait for the newly created process to send `SIGUSR1` before
+    killing the old one. More details below. It still respect `-start` argument.
+    Details [below](#wait-child-notif)
+
 ## HOW IT WORKS
 
 On start:
@@ -70,6 +75,27 @@ On SIGHUP, socketmaster starts a new child process, waits for -start and sends a
 HUP to the old process.
 
 SIGINT, SIGTERM and SIGQUIT are forwarded to the child processes.
+
+## Wait Child Notif
+
+When activated using `-wait-child-notif` flag, `socketmaster` will wait for the newly created process
+to send `SIGUSR1` before killing the old one.
+
+Note that `-wait-child-notif` still respect `-start` argument.
+
+In order to use this feature, the app server need to do this:
+- read `SOCKETMASTER_PID` environment variable to get `socketmaster` process ID
+- Send `SIGUSR1` signal after the appserver is ready to the `socketmaster`
+
+*Example in Go*
+
+Send `SIGUSR1` signal after the appserver is ready
+```go
+import (
+  "github.com/tokopedia/socketmaster/child"
+)
+go child.NotifyMaster()
+```
 
 ## RELATED PROJECTS
 
