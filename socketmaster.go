@@ -56,6 +56,7 @@ func killOldProcesses(processGroup *ProcessGroup, startTime int, process *os.Pro
 	if startTime > 0 {
 		time.Sleep(time.Duration(startTime) * time.Millisecond)
 	}
+
 	if processGroup.set.Len() > 1 {
 		processGroup.SignalAll(syscall.SIGTERM, process)
 	} else {

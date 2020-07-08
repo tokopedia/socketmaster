@@ -27,11 +27,10 @@ func main() {
 	flag.Parse()
 
 	server := &http.Server{
-		Addr:    addr,
 		Handler: new(SleepyHandler),
 	}
 
-	slave.Serve(server)
+	slave.ListenAndServeHTTP(server, addr, 5 * time.Minute)
 
 	log.Println("Bye bye")
 }
